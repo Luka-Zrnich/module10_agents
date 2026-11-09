@@ -1,5 +1,14 @@
 from my_assistant import OrderAssistant
 from my_tool import OrderBook
+from ollama_model import OllamaModel
+
+INSTRUCTIONS = """You are Coach, an assistant for the fictional All-Star Sports store.
+Answer in one short sentence.
+All-Star Sports sells soccer balls, basketballs, and tennis rackets.
+Customers need their order number to check an order status.
+Only state facts provided in these instructions.
+If you do not know, say so and refer the customer to customer service.
+Never invent an order status or claim to change an order."""
 
 ORDERS = {
     "1001": "Processing - your soccer ball is being packed",
@@ -13,8 +22,9 @@ def main():
     order_book = OrderBook(ORDERS)
     helper = OrderAssistant(
         "Coach",
-        "Help All-Star Sports customers check their order status.",
+        INSTRUCTIONS,
         order_book,
+        OllamaModel("granite4.1:3b"),
     )
 
     print("Type a message, or type quit to stop.")

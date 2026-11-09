@@ -7,11 +7,12 @@ STATUS_WORDS = {"order", "status", "track", "tracking", "package"}
 class OrderAssistant:
     """Answer mock status questions and refer changes to a person."""
 
-    def __init__(self, name, instructions, order_book):
+    def __init__(self, name, instructions, order_book, model):
         """Store the assistant's name, instructions, tool, and history."""
         self.name = name
         self.instructions = instructions
         self.order_book = order_book
+        self.model = model
         self.history = []
 
     def respond(self, user_message):
@@ -22,7 +23,7 @@ class OrderAssistant:
         return reply
 
     def choose_reply(self, user_message):
-        """Choose a reply using simple keywords, not AI."""
+        """Apply rules first, then ask the model."""
         text = user_message.lower().strip()
         words = set(re.findall(r"[a-z]+", text))
 
@@ -37,16 +38,14 @@ class OrderAssistant:
         if words & STATUS_WORDS or re.fullmatch(r"#?[0-9]+", text):
             return self.status_reply(user_message)
 
-        if words & {"hello", "hi", "hey"}:
-            return (
-                f"Hello! I'm {self.name} from All-Star Sports. "
-                "Ask me for an order status using your order number."
-            )
+        return self.model_reply()
 
-        return (
-            "I'm not sure how to help with that. "
-            "I can check an order status using an order number."
-        )
+    def model_reply(self):
+        """Use the model, with a safe reply when it has no answer."""
+        reply = self.model.reply(self.instructions, self.history)
+        if reply is None:
+            return "Sorry, I can't answer that right now. Please try again in a moment."
+        return reply
 
     def needs_human(self, words):
         """Send requests involving changes or money to customer service."""

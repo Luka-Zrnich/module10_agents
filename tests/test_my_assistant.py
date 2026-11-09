@@ -1,18 +1,24 @@
 import pytest
 
+from mock_model import MockModel
 from my_assistant import OrderAssistant
 from my_tool import OrderBook
+
+
+class SilentModel:
+    def reply(self, instructions, history):
+        return None
 
 
 def make_helper():
     """Create a fresh assistant and tool for each test."""
     book = OrderBook({"1001": "Processing", "1002": "Shipped"})
-    return OrderAssistant("Coach", "Be clear.", book)
+    return OrderAssistant("Coach", "Be clear.", book, MockModel())
 
 
 def test_status_question_uses_the_supplied_tool():
     book = OrderBook({"4321": "Ready for pickup"})
-    helper = OrderAssistant("Coach", "Be clear.", book)
+    helper = OrderAssistant("Coach", "Be clear.", book, MockModel())
 
     assert helper.order_book is book
     assert helper.respond("Where is order 4321?") == "Order 4321: Ready for pickup."
@@ -43,8 +49,9 @@ def test_changes_go_to_a_person_before_status_lookup(message):
 
 
 def test_unknown_request_gets_a_safe_reply():
-    reply = make_helper().respond("What is your favorite sport?")
-    assert "not sure" in reply
+    book = OrderBook({})
+    helper = OrderAssistant("Coach", "Be clear.", book, SilentModel())
+    assert "try again" in helper.respond("What is your favorite sport?")
 
 
 def test_history_records_roles_and_content_for_every_turn():
@@ -76,3 +83,15 @@ def test_multiple_numbers_ask_for_one():
 def test_greeting_is_not_triggered_by_a_substring():
     reply = make_helper().respond("Which shoes are best?")
     assert "not sure" in reply
+
+
+def test_other_messages_go_to_the_model():
+    assert make_helper().respond("hello") == "Hello! How can I help you today?"
+
+
+def test_rules_work_when_model_has_no_answer():
+    helper = OrderAssistant(
+        "Coach", "Be clear.", OrderBook({"1001": "Processing"}), SilentModel()
+    )
+    assert helper.respond("Order 1001") == "Order 1001: Processing."
+    assert "customer service" in helper.respond("Cancel order 1001")
